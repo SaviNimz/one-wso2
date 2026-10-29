@@ -131,6 +131,7 @@ import EmailWorkbenchSettingsPage from "@features/marketing-ops/admin/pages/Emai
 import BlockCatalogPage from "@features/marketing-ops/email-workbench/pages/BlockCatalogPage";
 import EventsSettingsPage from "@features/marketing-ops/admin/pages/EventsSettingsPage";
 import PostBuilderPage from "@features/marketing-ops/design-studio/pages/PostBuilderPage";
+import MarketingCalendarPage from "@features/marketing-ops/marketing-calendar/pages/MarketingCalendarPage";
 import {
   EventsMinePage,
   EventsReviewPage,
@@ -945,6 +946,11 @@ export default function App() {
             path="marketing-ops/design-studio/post-builder"
             element={<PostBuilderPage />}
           />
+          {/* Marketing Calendar — a read-only month of what the marketing team plans in
+              GitHub. Held back by the `marketingCalendar` preview flag. */}
+          {isPreviewEnabled("marketingCalendar") && (
+            <Route path="marketing-ops/marketing-calendar" element={<MarketingCalendarPage />} />
+          )}
           {/* Sales opens on the first rail row the caller can see, which is
               Echo → Meetings (`forwardsToFirstItem`); someone the backend
               refuses is told so here, by PerspectiveLanding. */}

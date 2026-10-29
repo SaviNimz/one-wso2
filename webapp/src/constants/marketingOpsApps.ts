@@ -55,6 +55,7 @@
 // Admin last because it configures the rest. Don't sort it.
 
 import {
+  CalendarDaysIcon,
   CalendarRangeIcon,
   ChartNoAxesCombinedIcon,
   MegaphoneIcon,
@@ -65,6 +66,28 @@ import {
   WrenchIcon,
 } from "@wso2/oxygen-ui-icons-react";
 import type { MenuApp } from "@constants/appMenu";
+import { isPreviewEnabled } from "@config/previewFeatures";
+
+// Marketing Calendar. Kept outside the array so its eyebrow can be built while the
+// `marketingCalendar` preview flag keeps it out of the rail — eyebrowFor below only
+// finds apps that are in MARKETING_OPS_APPS.
+const MARKETING_CALENDAR_APP: MenuApp = {
+  key: "marketing-calendar",
+  name: "Marketing Calendar",
+  icon: CalendarDaysIcon,
+  purpose:
+    "A month view of the events, content, social posts and emails the marketing team plans in GitHub.",
+  items: [
+    // Read-only, live from GitHub through the Engineering Entity Service.
+    {
+      id: "mops-marketing-calendar",
+      label: "Calendar",
+      desc: "Everything planned for the month, filterable by events, content, social and email.",
+      requires: ["admin"],
+      path: "/marketing-ops/marketing-calendar",
+    },
+  ],
+};
 
 export const MARKETING_OPS_APPS: readonly MenuApp[] = [
   {
@@ -212,6 +235,9 @@ export const MARKETING_OPS_APPS: readonly MenuApp[] = [
       },
     ],
   },
+  // Next to the two Events apps, which serve the same people around the same
+  // events. Hidden until the `marketingCalendar` preview flag is on.
+  ...(isPreviewEnabled("marketingCalendar") ? [MARKETING_CALENDAR_APP] : []),
   {
     key: "crm-upload",
     name: "CRM Upload",
@@ -380,6 +406,7 @@ export const MARKETING_OPS_EYEBROW = {
   adCampaigns: eyebrowFor("ad-campaigns"),
   events: eyebrowFor("events"),
   eventPlatform: eyebrowFor("event-platform"),
+  marketingCalendar: { icon: MARKETING_CALENDAR_APP.icon, label: MARKETING_CALENDAR_APP.name },
   crmUpload: eyebrowFor("crm-upload"),
   designStudio: eyebrowFor("design-studio"),
   utilities: eyebrowFor("utilities"),

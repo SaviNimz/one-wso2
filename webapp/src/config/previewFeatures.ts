@@ -86,7 +86,15 @@ export type PreviewFeature =
    * With the flag on and `ONE_WSO2_SMART_SEARCH_BACKEND_URL` unset, the page
    * says "not connected" and makes no requests.
    */
-  | "smartSearch";
+  | "smartSearch"
+  /**
+   * Marketing Ops → Marketing Calendar, the month view of events, content, social
+   * posts and emails planned in GitHub: its rail group, the
+   * `/marketing-ops/marketing-calendar` route, and its backend calls. Held back
+   * while the business owners settle which GitHub items it shows
+   * (digiops-marketing#1596).
+   */
+  | "marketingCalendar";
 
 /**
  * Whether a preview feature should be shown.
