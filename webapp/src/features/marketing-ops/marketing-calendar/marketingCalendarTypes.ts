@@ -18,25 +18,72 @@
 // The Marketing Calendar's data, as GET /api/marketing-calendar/items returns it. Each item
 // is one GitHub issue under one calendar category: an issue with two calendar
 // labels arrives twice, once per category, with a different `id`.
+//
+// The backend sends data and the frontend owns the wording: the field labels,
+// their order and the layout live in CalendarItemDrawer. Empty values are left
+// out rather than sent as "".
 
 export type CalendarCategory = "event" | "content" | "social" | "email";
 
-export interface CalendarItem {
+interface CalendarItemCommon {
   // "<owner>/<repo>#<number>:<category>"
   id: string;
   title: string;
   // The issue on github.com.
   url: string;
-  category: CalendarCategory;
-  // A civil date, YYYY-MM-DD.
+  // A civil date, YYYY-MM-DD: the Due Date, or for an event with none, its
+  // Event start date.
   date: string;
-  labels: string[];
   state: "open" | "closed";
-  // The issue's project fields (Status, Format, Publishing Platform, …) as
-  // ready-to-show text, keyed by field name. Which fields exist depends on the
-  // GitHub project, so the drawer shows whatever arrives.
-  metadata: Record<string, string>;
+  // The project's Status, e.g. "Planned".
+  status?: string;
+  // Display names mapped from the BU_* and REG_* labels.
+  bu: string[];
+  region: string[];
 }
+
+export interface ContentDetails {
+  // An email address.
+  author?: string;
+  contentType?: string;
+  format?: string;
+  targetPersona?: string;
+  // Plain text from the issue body, line breaks kept.
+  abstract?: string;
+}
+
+export interface EventDetails {
+  eventName?: string;
+  // YYYY-MM-DD.
+  startDate?: string;
+  endDate?: string;
+  eventType?: string;
+  // Whatever the form says: a URL or free text.
+  salesforceCampaign?: string;
+}
+
+export interface SocialDetails {
+  platform?: string;
+  handle?: string;
+}
+
+export interface EmailDetails {
+  subjectLine?: string;
+  sender?: string;
+  // Plain text from the issue body, line breaks kept.
+  bodyCopy?: string;
+}
+
+export type CalendarItem = CalendarItemCommon &
+  (
+    | { category: "content"; details: ContentDetails }
+    | { category: "event"; details: EventDetails }
+    | { category: "social"; details: SocialDetails }
+    | { category: "email"; details: EmailDetails }
+  );
+
+/** One category's items, with that category's `details`. */
+export type CalendarItemOf<C extends CalendarCategory> = Extract<CalendarItem, { category: C }>;
 
 export interface CalendarItemsResponse {
   // When the backend read GitHub, as an ISO-8601 UTC instant.

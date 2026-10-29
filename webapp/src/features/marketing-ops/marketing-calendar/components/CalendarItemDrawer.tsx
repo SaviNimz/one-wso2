@@ -14,15 +14,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Box, Button, Chip, Drawer, IconButton, Stack, Typography } from "@wso2/oxygen-ui";
+import { Box, Button, Chip, Drawer, IconButton, Link, Typography } from "@wso2/oxygen-ui";
 import { ExternalLinkIcon, XIcon } from "@wso2/oxygen-ui-icons-react";
-import { categoryStyle } from "../calendarCategories";
+import { categoryChipColor, categoryStyle } from "../calendarCategories";
 import { longDate } from "../calendarDates";
 import type { CalendarItem } from "../marketingCalendarTypes";
 
 // One item's details in a drawer on the right, the same shape as Event
-// Platform's SpeakerPreviewDrawer. The issue body is not shown: whether it may be
-// is still undecided (Q6), so the backend doesn't send it.
+// Platform's SpeakerPreviewDrawer. The fields are chosen by the item's own
+// category, so an item opened from the All view reads the same as from its tab.
+// A field with no value is left out rather than shown as a dash (pending Q12).
 export default function CalendarItemDrawer({
   item,
   onClose,
@@ -43,51 +44,113 @@ export default function CalendarItemDrawer({
   );
 }
 
+interface Field {
+  label: string;
+  value: string | readonly string[] | undefined;
+  // "date": a YYYY-MM-DD shown long. "text": an abstract or email body, shown as
+  // written with its line breaks — plain text, never HTML or markdown. "link":
+  // a link when it is an https URL, text otherwise.
+  kind?: "date" | "text" | "link";
+}
+
+// The heading and the rows under it, per category, in the order the marketing
+// team listed them. The heading is each list's first field (Title, or the Event
+// Name), so it isn't repeated as a row.
+function itemFields(item: CalendarItem): { heading: string; fields: Field[] } {
+  const date: Field = { label: categoryStyle(item.category).dateLabel, value: item.date, kind: "date" };
+  const bu: Field = { label: "BU", value: item.bu };
+  const region: Field = { label: "Region", value: item.region };
+
+  switch (item.category) {
+    case "content":
+      return {
+        heading: item.title,
+        fields: [
+          { label: "Author", value: item.details.author },
+          { label: "Content type", value: item.details.contentType },
+          { label: "Format", value: item.details.format },
+          { label: "Target persona", value: item.details.targetPersona },
+          date,
+          bu,
+          { label: "Abstract", value: item.details.abstract, kind: "text" },
+        ],
+      };
+    case "event":
+      return {
+        heading: item.details.eventName ?? item.title,
+        fields: [
+          { label: "Event Start Date", value: item.details.startDate, kind: "date" },
+          { label: "Event End Date", value: item.details.endDate, kind: "date" },
+          { label: "Event Type", value: item.details.eventType },
+          { label: "Salesforce Campaign", value: item.details.salesforceCampaign, kind: "link" },
+          bu,
+          region,
+        ],
+      };
+    case "social":
+      return {
+        heading: item.title,
+        fields: [
+          date,
+          { label: "Platform", value: item.details.platform },
+          { label: "Handle", value: item.details.handle },
+          bu,
+        ],
+      };
+    case "email":
+      return {
+        heading: item.title,
+        fields: [
+          date,
+          bu,
+          region,
+          { label: "Subject line", value: item.details.subjectLine },
+          { label: "Sender", value: item.details.sender },
+          { label: "Email body copy", value: item.details.bodyCopy, kind: "text" },
+        ],
+      };
+  }
+}
+
 function ItemDetails({ item, onClose }: { item: CalendarItem; onClose: () => void }) {
   const style = categoryStyle(item.category);
-  const metadata = Object.entries(item.metadata);
+  const paint = categoryChipColor(style, "outlined");
+  const { heading, fields } = itemFields(item);
+  const shownFields = fields.filter((field) => field.value !== undefined && field.value.length > 0);
+  const state = item.state === "open" ? "Open" : "Closed";
 
   return (
     <>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Chip label={style.label} color={style.color} variant="outlined" size="small" />
+        <Chip label={style.label} color={paint.color} variant="outlined" size="small" sx={paint.sx} />
         <IconButton size="small" aria-label="Close details" onClick={onClose}>
           <XIcon size={18} />
         </IconButton>
       </Box>
 
       <Typography variant="h6" component="h2" sx={{ fontWeight: 600, mb: 0.5 }}>
-        {item.title}
+        {heading}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {longDate(item.date)} · {item.state === "open" ? "Open" : "Closed"}
+        {item.status ? `${item.status} · ${state}` : state}
       </Typography>
 
-      {metadata.length > 0 && (
-        <Box component="dl" sx={{ m: 0, mb: 2 }}>
-          {metadata.map(([field, value]) => (
-            <Box key={field} sx={{ py: 0.75, borderBottom: 1, borderColor: "divider" }}>
+      {shownFields.length > 0 && (
+        <Box component="dl" sx={{ m: 0, mb: 3 }}>
+          {shownFields.map((field) => (
+            <Box key={field.label} sx={{ py: 0.75, borderBottom: 1, borderColor: "divider" }}>
               <Typography component="dt" variant="caption" color="text.secondary">
-                {field}
+                {field.label}
               </Typography>
-              <Typography component="dd" variant="body2" sx={{ m: 0, overflowWrap: "anywhere" }}>
-                {value}
+              <Typography
+                component="dd"
+                variant="body2"
+                sx={{ m: 0, overflowWrap: "anywhere", whiteSpace: field.kind === "text" ? "pre-wrap" : undefined }}
+              >
+                <FieldValue field={field} />
               </Typography>
             </Box>
           ))}
-        </Box>
-      )}
-
-      {item.labels.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="caption" color="text.secondary">
-            Labels
-          </Typography>
-          <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-            {item.labels.map((label) => (
-              <Chip key={label} label={label} size="small" />
-            ))}
-          </Stack>
         </Box>
       )}
 
@@ -107,6 +170,21 @@ function ItemDetails({ item, onClose }: { item: CalendarItem; onClose: () => voi
       )}
     </>
   );
+}
+
+function FieldValue({ field }: { field: Field }) {
+  const { value } = field;
+  if (value === undefined) return null;
+  if (typeof value !== "string") return value.join(", ");
+  if (field.kind === "date") return longDate(value);
+  if (field.kind === "link" && isHttpsUrl(value)) {
+    return (
+      <Link href={value} target="_blank" rel="noopener noreferrer">
+        {value}
+      </Link>
+    );
+  }
+  return value;
 }
 
 function isHttpsUrl(url: string): boolean {

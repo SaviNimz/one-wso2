@@ -15,13 +15,16 @@
 // under the License.
 
 import { Chip, Tooltip } from "@wso2/oxygen-ui";
-import { categoryStyle } from "../calendarCategories";
+import { categoryChipColor, categoryStyle } from "../calendarCategories";
+import { longDate } from "../calendarDates";
 import type { CalendarItem } from "../marketingCalendarTypes";
 
 // One item in a day cell. The title is cut to the cell's width, so the tooltip
-// carries the whole of it. Outlined rather than filled for the same contrast
-// reason MarketingOpsShell gives for its eyebrow chip. A closed item is faded so
-// what is still to come stands out.
+// carries the whole of it, with the date under the category's own name for it
+// (Publish Date, Post Date, …; plain "Date" for an event, whose calendar date is
+// its Due Date rather than its start date). Outlined rather
+// than filled for the same contrast reason MarketingOpsShell gives for its
+// eyebrow chip. A closed item is faded so what is still to come stands out.
 export default function CalendarItemChip({
   item,
   onOpen,
@@ -30,15 +33,27 @@ export default function CalendarItemChip({
   onOpen: (item: CalendarItem) => void;
 }) {
   const style = categoryStyle(item.category);
+  const paint = categoryChipColor(style, "outlined");
   return (
-    <Tooltip title={`${style.label}: ${item.title}`} placement="top" disableInteractive>
+    <Tooltip
+      title={
+        <>
+          {style.label}: {item.title}
+          <br />
+          {style.dateLabel}: {longDate(item.date)}
+        </>
+      }
+      placement="top"
+      disableInteractive
+    >
       <Chip
         label={item.title}
-        color={style.color}
+        color={paint.color}
         variant="outlined"
         size="small"
         onClick={() => onOpen(item)}
         sx={{
+          ...paint.sx,
           width: "100%",
           justifyContent: "flex-start",
           opacity: item.state === "closed" ? 0.6 : 1,
