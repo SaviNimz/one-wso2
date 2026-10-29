@@ -56,3 +56,22 @@ describe("the chip's tooltip", () => {
     expect(text).toContain(`${label}: ${longDate(item.date)}`);
   });
 });
+
+describe("the chip's title", () => {
+  // jsdom can't lay out text, so the two-line clamp itself is checked in a browser.
+  it("holds the whole title (CSS clamps it to two lines), and so does the tooltip", async () => {
+    const item = sampleItem("58:email");
+    const text = await hoverTooltip(item);
+    // While the tooltip is open, MUI names the button after it, so find it by role alone.
+    expect(screen.getByRole("button")).toHaveTextContent(item.title);
+    expect(text).toContain(item.title);
+  });
+
+  it("opens the item when clicked", async () => {
+    const item = sampleItem("42:content");
+    const opened: CalendarItem[] = [];
+    render(<CalendarItemChip item={item} onOpen={(i) => opened.push(i)} />);
+    await userEvent.setup().click(screen.getByRole("button", { name: item.title }));
+    expect(opened).toEqual([item]);
+  });
+});

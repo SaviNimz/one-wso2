@@ -100,6 +100,18 @@ export const CALENDAR_CATEGORIES: readonly CategoryStyle[] = [
  * palette colour (the same border alpha, hover and focus fills). Spread `sx`
  * into the chip's own.
  */
+/**
+ * The category's colour as a CSS value, for drawing with it directly (the grid
+ * chip's accent bar and tint) rather than through a Chip's `color` prop.
+ */
+export function categoryMainColor(
+  style: CategoryStyle,
+  palette: Record<"primary" | "info" | "success", { main: string }>,
+): string {
+  const { color } = style;
+  return typeof color === "string" ? palette[color].main : color.main;
+}
+
 export function categoryChipColor(
   style: CategoryStyle,
   variant: "filled" | "outlined",

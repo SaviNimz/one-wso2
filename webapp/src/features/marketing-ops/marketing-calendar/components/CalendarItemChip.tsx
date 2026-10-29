@@ -14,17 +14,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Chip, Tooltip } from "@wso2/oxygen-ui";
-import { categoryChipColor, categoryStyle } from "../calendarCategories";
+import { alpha, Box, ButtonBase, Tooltip, useTheme } from "@wso2/oxygen-ui";
+import { categoryMainColor, categoryStyle } from "../calendarCategories";
 import { longDate } from "../calendarDates";
 import type { CalendarItem } from "../marketingCalendarTypes";
 
-// One item in a day cell. The title is cut to the cell's width, so the tooltip
-// carries the whole of it, with the date under the category's own name for it
-// (Publish Date, Post Date, …; plain "Date" for an event, whose calendar date is
-// its Due Date rather than its start date). Outlined rather
-// than filled for the same contrast reason MarketingOpsShell gives for its
-// eyebrow chip. A closed item is faded so what is still to come stands out.
+// One item in a day cell, drawn as a calendar entry rather than a Chip: a bar in
+// the category colour on the left, a faint tint of it behind, and up to two lines
+// of title in the body text colour. The tooltip has the full title and the date.
 export default function CalendarItemChip({
   item,
   onOpen,
@@ -33,7 +30,7 @@ export default function CalendarItemChip({
   onOpen: (item: CalendarItem) => void;
 }) {
   const style = categoryStyle(item.category);
-  const paint = categoryChipColor(style, "outlined");
+  const colour = categoryMainColor(style, useTheme().palette);
   return (
     <Tooltip
       title={
@@ -46,20 +43,39 @@ export default function CalendarItemChip({
       placement="top"
       disableInteractive
     >
-      <Chip
-        label={item.title}
-        color={paint.color}
-        variant="outlined"
-        size="small"
+      <ButtonBase
         onClick={() => onOpen(item)}
         sx={{
-          ...paint.sx,
           width: "100%",
           justifyContent: "flex-start",
+          textAlign: "left",
+          typography: "caption",
+          lineHeight: 1.35,
+          color: "text.primary",
+          px: 0.75,
+          py: 0.375,
+          borderLeft: `3px solid ${colour}`,
+          borderRadius: "4px",
+          bgcolor: alpha(colour, 0.12),
           opacity: item.state === "closed" ? 0.6 : 1,
-          "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" },
+          "&:hover": { bgcolor: alpha(colour, 0.22) },
+          "&.Mui-focusVisible": { outline: `2px solid ${colour}`, outlineOffset: 1 },
         }}
-      />
+      >
+        <Box
+          component="span"
+          sx={{
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            overflowWrap: "anywhere",
+            minWidth: 0,
+          }}
+        >
+          {item.title}
+        </Box>
+      </ButtonBase>
     </Tooltip>
   );
 }
