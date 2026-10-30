@@ -52,7 +52,8 @@
 // overview page alike. It is Sarindu's, chosen by how much the operations are
 // used rather than by name or by the order they were ported in: Email
 // Workbench, Ad Campaigns, Events, CRM Upload, then Utilities, with Marketing
-// Admin last because it configures the rest. Don't sort it.
+// Admin last because it configures the rest. The Marketing Calendar goes ahead
+// of them all. Don't sort it.
 
 import {
   CalendarDaysIcon,
@@ -90,6 +91,9 @@ const MARKETING_CALENDAR_APP: MenuApp = {
 };
 
 export const MARKETING_OPS_APPS: readonly MenuApp[] = [
+  // First, above ISAC too in the rail (see perspectives.ts). Hidden until the
+  // `marketingCalendar` preview flag is on.
+  ...(isPreviewEnabled("marketingCalendar") ? [MARKETING_CALENDAR_APP] : []),
   {
     key: "email-workbench",
     name: "Email Workbench",
@@ -235,9 +239,6 @@ export const MARKETING_OPS_APPS: readonly MenuApp[] = [
       },
     ],
   },
-  // Next to the two Events apps, which serve the same people around the same
-  // events. Hidden until the `marketingCalendar` preview flag is on.
-  ...(isPreviewEnabled("marketingCalendar") ? [MARKETING_CALENDAR_APP] : []),
   {
     key: "crm-upload",
     name: "CRM Upload",
