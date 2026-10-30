@@ -32,10 +32,11 @@ vi.mock("../../api/useMarketingCalendar", () => ({
   useMarketingCalendarItems: (from: string, to: string) => itemsHook(from, to),
 }));
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { MARKETING_CALENDAR_PATH } from "../calendarOutlet";
+import { shortDate } from "../calendarRange";
 import { marketingCalendarViewRoutes } from "../routes";
 import MarketingCalendarLayout from "./MarketingCalendarLayout";
 
@@ -181,5 +182,99 @@ describe("a type tab's filters", () => {
   it("names the view and the filters when nothing matches", () => {
     renderCalendar(`${MARKETING_CALENDAR_PATH}/content?month=2026-11&format=Blog&bu=API`);
     expect(screen.getByText("No content planned for November 2026 with these filters.")).toBeVisible();
+  });
+});
+
+describe("the Calendar | List toggle", () => {
+  const toggle = (name: "Calendar" | "List") =>
+    within(screen.getByRole("group", { name: "Show as" })).getByRole("button", { name });
+  const itemList = () => screen.queryByRole("region", { name: "Items by date" });
+  const ranges = () => new Set(itemsHook.mock.calls.map(([from, to]) => `${from}..${to}`));
+
+  it("starts on Calendar, with the month grid", () => {
+    renderCalendar(`${MARKETING_CALENDAR_PATH}?month=2026-11`);
+    expect(toggle("Calendar")).toHaveAttribute("aria-pressed", "true");
+    expect(toggle("List")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("grid", { name: "Month" })).toBeVisible();
+    expect(itemList()).toBeNull();
+    expect(screen.queryByLabelText("From")).toBeNull();
+  });
+
+  it("switches to List: ?view=list, From and To for the month, the list, and a fetch of just that range", async () => {
+    const user = renderCalendar(`${MARKETING_CALENDAR_PATH}?month=2026-11`);
+    itemsHook.mockClear();
+    await user.click(toggle("List"));
+
+    expect(url()).toBe(`${MARKETING_CALENDAR_PATH}?month=2026-11&view=list`);
+    expect(toggle("List")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("From")).toHaveValue("2026-11-01");
+    expect(screen.getByLabelText("To")).toHaveValue("2026-11-30");
+    expect(screen.queryByRole("button", { name: "Previous month" })).toBeNull();
+    expect(screen.queryByRole("grid", { name: "Month" })).toBeNull();
+    expect(within(itemList()!).getByText(WHITEPAPER)).toBeVisible();
+    // Last updated and Refresh stay.
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeVisible();
+    expect(ranges()).toEqual(new Set(["2026-11-01..2026-11-30"]));
+  });
+
+  it("puts both dates in the URL when one changes, and fetches that range", () => {
+    renderCalendar(`${MARKETING_CALENDAR_PATH}?month=2026-11&view=list`);
+    itemsHook.mockClear();
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-11-15" } });
+    expect(url()).toBe(`${MARKETING_CALENDAR_PATH}?month=2026-11&view=list&from=2026-11-15&to=2026-11-30`);
+    expect(ranges()).toEqual(new Set(["2026-11-15..2026-11-30"]));
+  });
+
+  it("sets aside a range that ends before it starts, says why, and lists the month", () => {
+    renderCalendar(`${MARKETING_CALENDAR_PATH}?month=2026-11&view=list&from=2026-12-10&to=2026-12-01`);
+    expect(screen.getByLabelText("From")).toHaveValue("2026-12-10");
+    expect(screen.getByText("Must be on or after From")).toBeVisible();
+    expect(ranges()).toEqual(new Set(["2026-11-01..2026-11-30"]));
+    expect(itemList()).not.toBeNull();
+  });
+
+  it("shows a missing date as blank, not as the month's", () => {
+    renderCalendar(`${MARKETING_CALENDAR_PATH}?month=2026-11&view=list&to=2026-11-20`);
+    expect(screen.getByLabelText("From")).toHaveValue("");
+    expect(screen.getByLabelText("To")).toHaveValue("2026-11-20");
+    expect(screen.getByText("Enter a valid date")).toBeVisible();
+    expect(ranges()).toEqual(new Set(["2026-11-01..2026-11-30"]));
+  });
+
+  it("opens the drawer from a row", async () => {
+    const user = renderCalendar(`${MARKETING_CALENDAR_PATH}/content?month=2026-11&view=list`);
+    await user.click(screen.getByRole("button", { name: /Securing agent-to-API traffic/ }));
+    expect(screen.getByRole("heading", { name: WHITEPAPER })).toBeVisible();
+  });
+
+  it("goes back to Calendar keeping the month and the range, and draws the grid again", async () => {
+    const user = renderCalendar(`${MARKETING_CALENDAR_PATH}?month=2026-11&view=list&from=2026-11-15&to=2026-11-30`);
+    itemsHook.mockClear();
+    await user.click(toggle("Calendar"));
+    expect(url()).toBe(`${MARKETING_CALENDAR_PATH}?month=2026-11&from=2026-11-15&to=2026-11-30`);
+    expect(screen.getByRole("heading", { name: "November 2026" })).toBeVisible();
+    expect(onGrid(SOCIAL_POST)).not.toBeNull();
+    expect(itemList()).toBeNull();
+    expect(ranges()).toEqual(new Set(["2026-10-26..2026-12-06"]));
+  });
+
+  it("keeps the view and the range across a tab switch, but not the tab's filters", async () => {
+    const user = renderCalendar(
+      `${MARKETING_CALENDAR_PATH}/content?month=2026-11&view=list&from=2026-11-15&to=2026-11-30&format=Blog`,
+    );
+    await user.click(screen.getByRole("tab", { name: "Social" }));
+    expect(url()).toBe(`${MARKETING_CALENDAR_PATH}/social?month=2026-11&view=list&from=2026-11-15&to=2026-11-30`);
+    expect(toggle("List")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("From")).toHaveValue("2026-11-15");
+    expect(within(itemList()!).getByText(SOCIAL_POST)).toBeVisible();
+  });
+
+  it("names the range when nothing matches", () => {
+    renderCalendar(`${MARKETING_CALENDAR_PATH}/content?month=2026-11&view=list&format=Blog&bu=API`);
+    expect(
+      screen.getByText(
+        `No content planned between ${shortDate("2026-11-01")} and ${shortDate("2026-11-30")} with these filters.`,
+      ),
+    ).toBeVisible();
   });
 });

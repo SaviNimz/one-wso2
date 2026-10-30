@@ -22,8 +22,9 @@ import {
   MultiSelectFilter,
 } from "../../ad-campaigns/campaign-tracker/components/FilterControls";
 import { CALENDAR_CATEGORIES, categoryStyle, parseCategory } from "../calendarCategories";
-import { monthTitle } from "../calendarDates";
-import { MARKETING_CALENDAR_PATH, useCalendarOutlet } from "../calendarOutlet";
+import { monthTitle, type CalendarMonth } from "../calendarDates";
+import { MARKETING_CALENDAR_PATH, useCalendarOutlet, type CalendarDisplay } from "../calendarOutlet";
+import { shortDate, type CalendarRange } from "../calendarRange";
 import {
   categoryFilterState,
   filterItems,
@@ -34,16 +35,18 @@ import {
 } from "../filterItems";
 import type { CalendarCategory } from "../marketingCalendarTypes";
 import CategoryLegendFilter from "../components/CategoryLegendFilter";
+import ItemList from "../components/ItemList";
 import MonthGrid from "../components/MonthGrid";
 
-// The calendar's tab bodies. Each draws its filters and the month grid over the
-// items the layout has already fetched; filterItems decides what shows.
+// The calendar's tab bodies. Each draws its filters and the month grid (or in
+// List, the item list) over the items the layout has already fetched;
+// filterItems decides what shows.
 
 const LEGACY_CATEGORY_PARAM = "category";
 
 /** All: every category, narrowed by the legend (`?show=`). */
 export function AllCalendarView() {
-  const { month, weeks, items, loaded, updateSearchParams, openItem } = useCalendarOutlet();
+  const { month, weeks, view, range, items, loaded, updateSearchParams, openItem } = useCalendarOutlet();
   const [searchParams] = useSearchParams();
 
   // `?category=event` is how a link from before the tabs named a category. It now
@@ -72,18 +75,22 @@ export function AllCalendarView() {
       />
       {loaded && shownItems.length === 0 && (
         <EmptyNote>
-          Nothing planned for {monthTitle(month)}
+          Nothing planned {period(view, month, range)}
           {filtered ? " with these filters" : ""}.
         </EmptyNote>
       )}
-      <MonthGrid month={month} weeks={weeks} items={shownItems} onOpenItem={openItem} />
+      {view === "list" ? (
+        <ItemList items={shownItems} onOpenItem={openItem} />
+      ) : (
+        <MonthGrid month={month} weeks={weeks} items={shownItems} onOpenItem={openItem} />
+      )}
     </>
   );
 }
 
 /** One category's tab: its items, narrowed by its own filters. */
 export function CategoryCalendarView({ category }: { category: CalendarCategory }) {
-  const { month, weeks, items, loaded, updateSearchParams, openItem } = useCalendarOutlet();
+  const { month, weeks, view, range, items, loaded, updateSearchParams, openItem } = useCalendarOutlet();
   const [searchParams] = useSearchParams();
 
   const filters = categoryFilterState(items, category, searchParams);
@@ -108,11 +115,15 @@ export function CategoryCalendarView({ category }: { category: CalendarCategory 
       </Box>
       {loaded && shownItems.length === 0 && (
         <EmptyNote>
-          No {categoryStyle(category).noun} planned for {monthTitle(month)}
+          No {categoryStyle(category).noun} planned {period(view, month, range)}
           {activeCount > 0 ? " with these filters" : ""}.
         </EmptyNote>
       )}
-      <MonthGrid month={month} weeks={weeks} items={shownItems} onOpenItem={openItem} />
+      {view === "list" ? (
+        <ItemList items={shownItems} onOpenItem={openItem} />
+      ) : (
+        <MonthGrid month={month} weeks={weeks} items={shownItems} onOpenItem={openItem} />
+      )}
     </>
   );
 }
@@ -124,4 +135,12 @@ function EmptyNote({ children }: { children: ReactNode }) {
       {children}
     </Typography>
   );
+}
+
+// What the empty state says was searched: "for November 2026", or in List
+// "between 1 Nov 2026 and 30 Nov 2026".
+function period(view: CalendarDisplay, month: CalendarMonth, range: CalendarRange): string {
+  return view === "list"
+    ? `between ${shortDate(range.from)} and ${shortDate(range.to)}`
+    : `for ${monthTitle(month)}`;
 }

@@ -18,6 +18,7 @@ import { useOutletContext } from "react-router";
 import type { RoutedTabDef } from "@components/routed-tabs/RoutedTabs";
 import { CALENDAR_CATEGORIES } from "./calendarCategories";
 import type { CalendarMonth, CivilDate } from "./calendarDates";
+import type { CalendarRange } from "./calendarRange";
 import type { CalendarItem } from "./marketingCalendarTypes";
 
 // The calendar's tabs, and what the shared layout hands each of them. The layout
@@ -32,10 +33,17 @@ export const CALENDAR_TABS: readonly RoutedTabDef[] = [
   ...CALENDAR_CATEGORIES.map((style) => ({ segment: style.segment, label: style.pluralLabel })),
 ];
 
+// How every tab draws its items: the month grid (the default), or a list by day
+// over a date range (`?view=list`).
+export type CalendarDisplay = "calendar" | "list";
+
 export interface CalendarOutletContext {
   month: CalendarMonth;
   weeks: CivilDate[][];
-  // Every category's items for the drawn grid; empty until the first fetch lands.
+  view: CalendarDisplay;
+  range: CalendarRange;
+  // Every category's items for the drawn grid, or in List for the range; empty
+  // until the first fetch lands.
   items: CalendarItem[];
   // The fetch has succeeded, so an empty view really is empty.
   loaded: boolean;
